@@ -1,70 +1,48 @@
 import 'package:flutter/material.dart';
-import 'package:redis/redis.dart';
+import 'package:flutter_redis_app/pages/user-list.dart';
+// import 'package:redis/redis.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MainPage extends StatefulWidget {
   @override
   _MainPage createState() => _MainPage();
 }
 
-RedisConnection conn = new RedisConnection();
-conn.connect('localhost',6379)
-  .then((Command command) {
-    command.send_object(["SET","key","0"])
-    .then((var response){
-      assert(response == 'OK');
-      return command.send_object(["INCR","key"]);
-    })
-    .then((var response){
-      assert(response == 1);  
-      return command.send_object(["INCR","key"]);
-    })
-    .then((var response){
-      assert(response == 2);
-      return command.send_object(["INCR","key"]);
-    })
-    .then((var response){
-      assert(response == 3);
-      return command.send_object(["GET","key"]);
-    })
-    .then((var response){
-      return print(response); // 3
-    });
-});
-
-
-abstract class ListItem {
-  Widget buildTitle(BuildContext context);
-  Widget buildSubtitle(BuildContext context);
-}
-
-class HeadingItem implements ListItem {
-  final String heading;
-  HeadingItem(this.heading);
-  Widget buildTitle(BuildContext context) {
-    return Text(
-      heading,
-      style: Theme.of(context).textTheme.headline5,
-    );
-  }
-  Widget buildSubtitle(BuildContext context) => null;
-}
-
-class Items implements ListItem {
-  String id;
-  String body;
-  Items(this.id, this.body);
-  Widget buildTitle(BuildContext context) => Text(id);
-  Widget buildSubtitle(BuildContext context) => Text(body);
-}
-
-
 class _MainPage extends State<MainPage> {
-  List<ListItem> items = [
-    Items("1", "Hello"),
-    Items("2", "World"),
-    Items("3", "Welcome"),
-    Items("4", "Flutter"),
-  ];
+
+  final usernameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
+
+  CollectionReference users = FirebaseFirestore.instance.collection('users');
+
+  void onButtonPress(){
+    Future<void> addUser() {
+      return users
+          .add({
+            'username': this.usernameController.text,
+            'email': this.emailController.text, 
+            'password': this.passwordController.text
+          })
+          .then((value) => print("User Added"))
+          .catchError((error) => print("Failed to add user: $error"));
+    }
+
+    addUser();
+    
+      // command.send_object(["username",this.usernameController.text])
+      // .then((var response){
+      //   assert(response == 1);  
+      // });
+      // command.send_object(["email",this.emailController.text])
+      // .then((var response){
+      //   assert(response == 2);
+      // });
+      // command.send_object(["password",this.passwordController.text])
+      // .then((var response){
+      //   assert(response == 2);
+      // });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,41 +52,58 @@ class _MainPage extends State<MainPage> {
         elevation: 2,
         backgroundColor: Theme.of(context).primaryColor,
       ),
-      body: ListView.builder(
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-              final item = items[index];
+      body: 
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            child: Padding(
+              padding: EdgeInsets.all(16.0),
+              child: new Column(children: [
+                SizedBox( height: 20, ),
+                TextField(
+                  controller: usernameController,
+                  decoration: InputDecoration(
+                      labelText: 'Username', border: OutlineInputBorder()),
+                ),
+                SizedBox( height: 20, ),
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(
+                      labelText: 'Email', border: OutlineInputBorder()),
+                ),
+                SizedBox( height: 20, ),
+                TextField(
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                      labelText: 'Password', border: OutlineInputBorder()),
+                ),
+                SizedBox( height: 20, ),
+                FloatingActionButton(
+                  onPressed: onButtonPress,
+                  tooltip: 'Save User',
+                  child: Icon(Icons.save),
+                ),
+                SizedBox( height: 100, ),
+                RaisedButton(
+                  textColor: Colors.white,
+                  color: Theme.of(context).primaryColor,
+                  child: Text("List of all users"),
+                  padding: const EdgeInsets.all(25),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      new MaterialPageRoute(builder: (context) => new UserPage()),
+                    );
+                  }
+                ),
 
-                return (
-                  Column(children: [
-
-                  ListTile(
-                    title: item.buildTitle(context),
-                    subtitle: item.buildSubtitle(context),
-                  ),
-
-
-                  Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: new Column(children: [
-                      SizedBox( height: 20, ),
-                      TextField(
-                        decoration: InputDecoration(
-                            labelText: 'Add an item to the list', border: OutlineInputBorder()),
-                      ),
-                      SizedBox( height: 20, ),
-                      FloatingActionButton(
-                        tooltip: 'Add Item',
-                        child: Icon(Icons.add),
-                      ),
-                    ],)
-                  ),
-                  
-                  ],
-                )
-                );
-              },
-            )
+              ],
+            ),
+            ) 
+          )
+        ]
+      )
     );
   }
 }
